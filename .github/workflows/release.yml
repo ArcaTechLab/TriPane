@@ -1,0 +1,158 @@
+# Builds TriPane's standalone executable for every platform and publishes a GitHub Release.
+#
+#   git tag v0.3.0 && git push origin v0.3.0    test, build, smoke-test, release
+#   Actions → Release → Run workflow            test and build only (archives are kept as
+#                                                workflow artifacts; no release is made)
+#
+# The tag must match "version" in package.json (v0.3.0 ↔ 0.3.0). A tag with a hyphen
+# (v0.3.0-beta.1) is published as a pre-release.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      skip_tests:
+        description: Skip the test suite (build only)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  BUN_VERSION: 1.4.4
+
+jobs:
+  check:
+    name: Version, typecheck and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Read the version
+        id: version
+        run: |
+          version=$(bun -e 'console.log((await Bun.file("package.json").json()).version)')
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME doesn't match package.json version $version (expected v$version)"
+            exit 1
+          fi
+
+      # The browsers are only needed by the tests.
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      - name: Typecheck
+        run: bun run typecheck
+
+      - name: Install Playwright browsers and their system libraries
+        if: ${{ !inputs.skip_tests }}
+        run: bunx playwright install --with-deps chromium firefox webkit
+
+      - name: Test
+        if: ${{ !inputs.skip_tests }}
+        run: bun test
+
+  build:
+    name: Build ${{ matrix.target }}
+    needs: check
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { target: linux-x64, runner: ubuntu-latest }
+          - { target: linux-arm64, runner: ubuntu-24.04-arm }
+          - { target: darwin-x64, runner: macos-15-intel }
+          - { target: darwin-arm64, runner: macos-latest }
+          - { target: windows-x64, runner: windows-latest }
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      # build-dist.ts packs Windows builds as .zip when the zip tool is there (.tar.gz otherwise).
+      - name: Install zip
+        if: runner.os == 'Windows'
+        run: choco install zip --no-progress -y
+
+      - name: Build
+        run: bun run dist --target ${{ matrix.target }}
+
+      # The binary must run on its own platform: it prints its version without Bun or node_modules.
+      - name: Smoke test
+        env:
+          VERSION: ${{ needs.check.outputs.version }}
+        run: |
+          name="tripane-$VERSION-${{ matrix.target }}"
+          mkdir smoke
+          if [[ -f "dist/$name.zip" ]]; then unzip -q "dist/$name.zip" -d smoke; else tar -xzf "dist/$name.tar.gz" -C smoke; fi
+          exe="smoke/$name/tripane"; [[ "${{ matrix.target }}" == windows-* ]] && exe="$exe.exe"
+          out=$("$exe" --version)
+          echo "$out"
+          [[ "$out" == *"$VERSION"* ]] || { echo "::error::$exe --version printed '$out', expected $VERSION"; exit 1; }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tripane-${{ matrix.target }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  release:
+    name: Publish the release
+    if: github.ref_type == 'tag'
+    needs: [check, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: tripane-*
+          merge-multiple: true
+
+      - name: Checksums
+        working-directory: dist
+        run: |
+          sha256sum tripane-* | sort -k2 > SHA256SUMS
+          cat SHA256SUMS
+
+      - name: Create the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          prerelease=()
+          [[ "$TAG" == *-* ]] && prerelease=(--prerelease)
+          gh release create "$TAG" dist/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "TriPane ${TAG#v}" \
+            --generate-notes \
+            --verify-tag \
+            "${prerelease[@]}"

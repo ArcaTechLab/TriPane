@@ -1,0 +1,274 @@
+@import 'tailwindcss';
+
+/* Interface themes. Each is a set of plain custom properties; @theme below turns them into
+   Tailwind colors (bg-chrome, text-muted, border-line, …). data-theme on <html> picks one
+   (Settings → Interface theme); without it ("System"), TriPane Light or Dark follows the
+   window's prefers-color-scheme, which TriPane sets from the theme's light/dark base so DevTools
+   matches. The selectors also work below the root: the theme picker's previews set data-theme on
+   themselves to show each palette. */
+:root,
+[data-theme='light'] {
+  --bg: #f3f3f5;
+  --chrome: #ffffff;
+  --chrome-2: #eef0f3;
+  --line: #d9dbe1;
+  --fg: #1c1d21;
+  --muted: #676a74;
+  --accent: #2563eb;
+  --on-accent: #fff;
+  --danger: #d63b3b;
+  --warn: #b7791f;
+  --chromium: #2f74f0;
+  --firefox: #e5671a;
+  --webkit: #12a07f;
+  --error-text: #b42318;
+  --warn-text: #8a5a00;
+  --grid-dot: #0000000f;
+  --hairline: #0000000d;
+  --shadow: #0003;
+  /* The current engine's color (set per pane, tab or chip by the engine-* utilities). */
+  --engine: var(--accent);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+    --bg: #111215;
+    --chrome: #1a1b1f;
+    --chrome-2: #22242a;
+    --line: #2e3037;
+    --fg: #e8e8ec;
+    --muted: #8d8f99;
+    --accent: #3d8bfd;
+    --on-accent: #fff;
+    --danger: #ff6b6b;
+    --warn: #f5c451;
+    --chromium: #4c8dff;
+    --firefox: #ff8a3d;
+    --webkit: #37c3a0;
+    --error-text: #ff9d9d;
+    --warn-text: #f7d98b;
+    --grid-dot: #ffffff0d;
+    --hairline: #ffffff0a;
+    --shadow: #000a;
+    color-scheme: dark;
+  }
+}
+[data-theme='dark'] {
+  --bg: #111215;
+  --chrome: #1a1b1f;
+  --chrome-2: #22242a;
+  --line: #2e3037;
+  --fg: #e8e8ec;
+  --muted: #8d8f99;
+  --accent: #3d8bfd;
+  --on-accent: #fff;
+  --danger: #ff6b6b;
+  --warn: #f5c451;
+  --chromium: #4c8dff;
+  --firefox: #ff8a3d;
+  --webkit: #37c3a0;
+  --error-text: #ff9d9d;
+  --warn-text: #f7d98b;
+  --grid-dot: #ffffff0d;
+  --hairline: #ffffff0a;
+  --shadow: #000a;
+  color-scheme: dark;
+}
+/* GitHub (Primer) */
+[data-theme='github-light'] {
+  --bg: #f6f8fa;
+  --chrome: #ffffff;
+  --chrome-2: #eff2f5;
+  --line: #d1d9e0;
+  --fg: #1f2328;
+  --muted: #59636e;
+  --accent: #0969da;
+  --on-accent: #fff;
+  --danger: #d1242f;
+  --warn: #9a6700;
+  --chromium: #0969da;
+  --firefox: #bc4c00;
+  --webkit: #1a7f37;
+  --error-text: #d1242f;
+  --warn-text: #9a6700;
+  --grid-dot: #0000000f;
+  --hairline: #0000000d;
+  --shadow: #0003;
+  color-scheme: light;
+}
+[data-theme='github-dark'] {
+  --bg: #010409;
+  --chrome: #0d1117;
+  --chrome-2: #151b23;
+  --line: #3d444d;
+  --fg: #f0f6fc;
+  --muted: #9198a1;
+  --accent: #4493f8;
+  --on-accent: #fff;
+  --danger: #f85149;
+  --warn: #d29922;
+  --chromium: #4493f8;
+  --firefox: #db6d28;
+  --webkit: #3fb950;
+  --error-text: #ff7b72;
+  --warn-text: #e3b341;
+  --grid-dot: #ffffff0d;
+  --hairline: #ffffff0a;
+  --shadow: #000a;
+  color-scheme: dark;
+}
+/* Dracula */
+[data-theme='dracula'] {
+  --bg: #21222c;
+  --chrome: #282a36;
+  --chrome-2: #343746;
+  --line: #44475a;
+  --fg: #f8f8f2;
+  --muted: #a4abc8;
+  --accent: #bd93f9;
+  --on-accent: #21222c;
+  --danger: #ff5555;
+  --warn: #ffb86c;
+  --chromium: #8be9fd;
+  --firefox: #ffb86c;
+  --webkit: #50fa7b;
+  --error-text: #ff6e6e;
+  --warn-text: #f1fa8c;
+  --grid-dot: #ffffff0d;
+  --hairline: #ffffff0a;
+  --shadow: #000a;
+  color-scheme: dark;
+}
+/* VS Code Light Modern and Dark Modern */
+[data-theme='vscode-light'] {
+  --bg: #eeeeee;
+  --chrome: #f8f8f8;
+  --chrome-2: #ffffff;
+  --line: #e5e5e5;
+  --fg: #3b3b3b;
+  --muted: #616161;
+  --accent: #005fb8;
+  --on-accent: #fff;
+  --danger: #e51400;
+  --warn: #bf8803;
+  --chromium: #005fb8;
+  --firefox: #c25e00;
+  --webkit: #16825d;
+  --error-text: #c72e0f;
+  --warn-text: #8a6100;
+  --grid-dot: #0000000f;
+  --hairline: #0000000d;
+  --shadow: #0003;
+  color-scheme: light;
+}
+[data-theme='vscode-dark'] {
+  --bg: #1f1f1f;
+  --chrome: #181818;
+  --chrome-2: #313131;
+  --line: #2b2b2b;
+  --fg: #cccccc;
+  --muted: #9d9d9d;
+  --accent: #0078d4;
+  --on-accent: #fff;
+  --danger: #f85149;
+  --warn: #cca700;
+  --chromium: #3794ff;
+  --firefox: #f0883e;
+  --webkit: #4ec9b0;
+  --error-text: #f48771;
+  --warn-text: #e2c08d;
+  --grid-dot: #ffffff0d;
+  --hairline: #ffffff0a;
+  --shadow: #000a;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-chrome: var(--chrome);
+  --color-chrome-2: var(--chrome-2);
+  --color-line: var(--line);
+  --color-hairline: var(--hairline);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-on-accent: var(--on-accent);
+  --color-danger: var(--danger);
+  --color-warn: var(--warn);
+  --color-error-text: var(--error-text);
+  --color-warn-text: var(--warn-text);
+  --color-shadow: var(--shadow);
+  --color-chromium: var(--chromium);
+  --color-firefox: var(--firefox);
+  --color-webkit: var(--webkit);
+  --color-engine: var(--engine);
+  --color-live: #3ddc84;
+  --font-sans: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+
+  /* Show clicks: a ring that grows and fades where a click landed. */
+  --animate-click: click-ripple 800ms ease-out forwards;
+  @keyframes click-ripple {
+    0% {
+      transform: scale(0.3);
+      opacity: 1;
+    }
+    45% {
+      opacity: 0.9;
+    }
+    100% {
+      transform: scale(1.6);
+      opacity: 0;
+    }
+  }
+}
+
+@utility engine-chromium {
+  --engine: var(--chromium);
+}
+@utility engine-firefox {
+  --engine: var(--firefox);
+}
+@utility engine-webkit {
+  --engine: var(--webkit);
+}
+/* A label next to an icon: trims the text box to the capital letters (cap height to baseline), so
+   items-center centres the icon on the letters rather than on the font's line box, which in some
+   fonts puts icons visibly low. Browsers without text-box support keep the normal box. */
+@utility trim-cap {
+  text-box: trim-both cap alphabetic;
+}
+/* The same for truncated (overflow-hidden) text, with room above and below so ascenders and
+   descenders aren't clipped; the padding is symmetric, so the letters stay centred. */
+@utility trim-cap-clip {
+  text-box: trim-both cap alphabetic;
+  padding-block: 0.3em;
+}
+/* The dotted backdrop behind each pane's viewport. */
+@utility bg-grid {
+  background:
+    radial-gradient(circle at 1px 1px, var(--grid-dot) 1px, transparent 0) 0 0 / 14px 14px,
+    var(--bg);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply overflow-hidden bg-bg font-sans text-[13px]/[1.4] text-fg;
+  }
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+  }
+  code {
+    @apply font-mono text-xs;
+  }
+  /* Lucide icons sit on the text baseline like the glyphs they replaced. */
+  .lucide {
+    flex: none;
+  }
+}

@@ -1,0 +1,4 @@
+# Tailwind runs as a plugin of Bun's own bundler, for the UI that Bun.serve bundles from
+# ui/index.html (in dev with HMR, and on the fly in production).
+[serve.static]
+plugins = ["bun-plugin-tailwind"]
