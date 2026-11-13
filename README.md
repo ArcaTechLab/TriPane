@@ -226,18 +226,20 @@ bun run dist --target darwin-arm64  # specific targets (repeatable)
 
 ### Releases (GitHub Actions)
 
-`.github/workflows/release.yml` builds every target on its own platform and publishes a GitHub Release:
+`.github/workflows/release.yml` builds every target on its own platform and publishes a GitHub Release.
 
-```sh
-# bump "version" in package.json first, commit, then:
-git tag v0.3.0 && git push origin v0.3.0
-```
+To release, bump `"version"` in `package.json`, commit and push. Then either:
 
-1. **Check:** the tag must match `package.json` (`v0.3.0` ↔ `0.3.0`). Then typecheck and the full test suite (with Playwright's browsers).
+- **From GitHub:** Actions → Release → *Run workflow*, with **Publish a release** ticked. The release is tagged `v<version>` on the commit that was built.
+- **From a tag:** `git tag v0.3.0 && git push origin v0.3.0`. The tag must match `package.json`.
+
+What the workflow does:
+
+1. **Check:** a version that was already released is refused. Then typecheck and the full test suite (with Playwright's browsers).
 2. **Build:** one job per target on a native runner (Linux x64/arm64, macOS Intel/Apple silicon, Windows). Each one also runs its binary's `--version` as a smoke test.
-3. **Release:** the archives and a `SHA256SUMS` file, with notes generated from the commits since the last tag. Tags with a hyphen (`v0.3.0-beta.1`) become pre-releases.
+3. **Release:** the archives and a `SHA256SUMS` file, with notes generated from the commits since the last release. Versions with a hyphen (`0.3.0-beta.1`) become pre-releases.
 
-Actions → Release → *Run workflow* runs steps 1 and 2 only. The archives are then kept as workflow artifacts for 14 days and no release is made.
+*Run workflow* without **Publish a release** runs steps 1 and 2 only. The archives are then kept as workflow artifacts for 14 days and no release is made.
 
 ## How it works
 

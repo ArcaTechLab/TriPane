@@ -1,11 +1,16 @@
 # Builds TriPane's standalone executable for every platform and publishes a GitHub Release.
 #
-#   git tag v0.3.0 && git push origin v0.3.0    test, build, smoke-test, release
-#   Actions → Release → Run workflow            test and build only (archives are kept as
-#                                                workflow artifacts; no release is made)
+#   Actions → Release → Run workflow, "Publish a release" ticked
+#                                     test, build, smoke-test, then tag v<package.json version>
+#                                     on that commit and publish the release
+#   Run workflow, not ticked          test and build only (archives are kept as workflow
+#                                     artifacts for 14 days; no release is made)
+#   git tag v0.3.0 && git push origin v0.3.0
+#                                     the same as ticked, for a tag made by hand
 #
-# The tag must match "version" in package.json (v0.3.0 ↔ 0.3.0). A tag with a hyphen
-# (v0.3.0-beta.1) is published as a pre-release.
+# The version comes from package.json: bump it before releasing. A tag must match it
+# (v0.3.0 ↔ 0.3.0), and a version that was already released is refused. A version with a
+# hyphen (0.3.0-beta.1) is published as a pre-release.
 name: Release
 
 on:
@@ -13,6 +18,10 @@ on:
     tags: ['v*']
   workflow_dispatch:
     inputs:
+      publish:
+        description: Publish a release (tags v<package.json version> on this commit)
+        type: boolean
+        default: false
       skip_tests:
         description: Skip the test suite (build only)
         type: boolean
@@ -35,6 +44,7 @@ jobs:
     timeout-minutes: 30
     outputs:
       version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
       - uses: oven-sh/setup-bun@v2
@@ -46,10 +56,25 @@ jobs:
         run: |
           version=$(bun -e 'console.log((await Bun.file("package.json").json()).version)')
           echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
           if [[ "$GITHUB_REF_TYPE" == tag && "$GITHUB_REF_NAME" != "v$version" ]]; then
             echo "::error::Tag $GITHUB_REF_NAME doesn't match package.json version $version (expected v$version)"
             exit 1
           fi
+          # Fail now rather than after the builds: each version is released once.
+          if [[ "$PUBLISH" == true ]]; then
+            if gh release view "v$version" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "::error::v$version has already been released. Bump \"version\" in package.json first."
+              exit 1
+            fi
+            if git ls-remote --exit-code --tags origin "refs/tags/v$version" >/dev/null; then
+              echo "::error::Tag v$version already exists. Bump \"version\" in package.json, or push that tag to release it."
+              exit 1
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PUBLISH: ${{ inputs.publish }}
 
       # The browsers are only needed by the tests.
       - name: Install dependencies
@@ -124,7 +149,7 @@ jobs:
 
   release:
     name: Publish the release
-    if: github.ref_type == 'tag'
+    if: github.ref_type == 'tag' || inputs.publish
     needs: [check, build]
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -146,13 +171,15 @@ jobs:
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ github.ref_name }}
+          TAG: ${{ needs.check.outputs.tag }}
         run: |
-          prerelease=()
-          [[ "$TAG" == *-* ]] && prerelease=(--prerelease)
+          extra=()
+          [[ "$TAG" == *-* ]] && extra+=(--prerelease)
+          # A pushed tag is used as it is; otherwise the release creates the tag on the commit
+          # that was built.
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then extra+=(--verify-tag); else extra+=(--target "$GITHUB_SHA"); fi
           gh release create "$TAG" dist/* \
             --repo "$GITHUB_REPOSITORY" \
             --title "TriPane ${TAG#v}" \
             --generate-notes \
-            --verify-tag \
-            "${prerelease[@]}"
+            "${extra[@]}"
