@@ -294,7 +294,3 @@ TRIPANE_CDP_DEBUG=1 bun start   # log DevTools commands the Firefox/WebKit adapt
 - **Device frames are an imitation:** the page doesn't react to the drawn notch, because safe-area insets aren't emulated.
 - **Backspace never navigates back** in the panes (Playwright's WebKit still does that on Windows and macOS); typing and pages' own Backspace handling are unaffected.
 - **Interface theme in another browser** (`--no-window`): an explicit Light or Dark theme applies to TriPane's UI only; DevTools follows that browser's own preference. Use System to keep them matched.
-
-## License
-
-TriPane is free to use. A license for the source code hasn't been chosen yet.
