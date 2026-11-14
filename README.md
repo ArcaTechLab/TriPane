@@ -207,6 +207,12 @@ Every engine reports to the same tool, Chrome DevTools (F12):
 Dock it at the left, bottom or right, or pop it out into its own window. Its tabs switch between All
 consoles, each engine, and Compare.
 
+TriPane sets two DevTools preferences for every engine:
+- Pasting into the Console and Sources works straight away, without first typing "allow pasting".
+- "Match Chrome color scheme" is off, so DevTools uses its own colors.
+
+They're set again on every start; changes made in DevTools' Settings last until TriPane quits.
+
 ## Standalone builds
 
 `bun run dist` compiles TriPane into **one executable**: server, UI and Playwright inside, no Bun,
@@ -294,5 +300,5 @@ TRIPANE_CDP_DEBUG=1 bun start   # log DevTools commands the Firefox/WebKit adapt
 - **Smoothness:** Firefox and WebKit panes use screenshot polling, so animation and video look choppier there than in Chromium. Panes show CSS-pixel pictures, not high-DPI ones, though pages behave as on the device, and Screenshot all captures at full resolution.
 - **Native dialogs and pickers** (`alert`, file pickers, `<select>` menus) open inside the headless engine and don't appear in the pane. IME composition isn't forwarded.
 - **Device frames are an imitation:** the page doesn't react to the drawn notch, because safe-area insets aren't emulated.
-- **Backspace never navigates back** in the panes (Playwright's WebKit still does that on Windows and macOS); typing and pages' own Backspace handling are unaffected.
+- **Backspace never navigates back** in the panes. Playwright's WebKit still does that on Windows and macOS, so there TriPane doesn't send WebKit a Backspace unless the focus is in a text field (checked without injecting anything). Typing is unaffected, but a page's own Backspace shortcut outside text fields doesn't fire in WebKit on those platforms.
 - **Interface theme in another browser** (`--no-window`): an explicit Light or Dark theme applies to TriPane's UI only; DevTools follows that browser's own preference. Use System to keep them matched.

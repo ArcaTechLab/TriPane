@@ -8,6 +8,7 @@ import { drawHighlight, pointFor, pointRef, refAtPoint, refForSelector, resolveE
 import type { NetworkOptions } from './proxy';
 import { measurePerformance, type PerformanceStats } from './perf';
 import { quietly } from './quiet';
+import { BackspaceGuard, FIREFOX_BACKSPACE_PREFS } from './backspace';
 import { cookieForHost, type StateFile } from './storage';
 
 const SAVE_STATE_MS = 30_000;
@@ -27,31 +28,6 @@ const CHROMIUM_HIGHLIGHT = {
 const LEAVE_SIGNALS_TO_TRIPANE = { handleSIGINT: false, handleSIGTERM: false, handleSIGHUP: false };
 
 const BROWSER_TYPES: Record<EngineName, BrowserType> = { chromium, firefox, webkit };
-
-/**
- * Turns off "Backspace (Shift+Backspace) goes back (forward)" in every engine. Playwright's
- * WebKit still does it on Windows and macOS (Safari switches it off; Chrome and Firefox dropped
- * it). It fires when the key reaches a page whose focus isn't in a text field, which happens when
- * a synced click lands differently in one engine; Follow links then took all three panes back.
- *
- * Only the browser's own default action is stopped, and only when the key isn't going to an
- * editable element and the page hasn't handled it: typing and page shortcuts are unaffected.
- * Listening on window in the bubble phase means page handlers run first.
- */
-const NO_BACKSPACE_NAVIGATION = `(() => {
-  const editable = (el) => {
-    if (!el || !(el instanceof Element)) return false;
-    if (el.isContentEditable) return true;
-    if (el instanceof HTMLTextAreaElement || el instanceof HTMLSelectElement) return true;
-    if (el instanceof HTMLInputElement) return !['button', 'checkbox', 'color', 'file', 'hidden', 'image', 'radio', 'range', 'reset', 'submit'].includes(el.type);
-    return false;
-  };
-  addEventListener('keydown', (e) => {
-    if (e.key !== 'Backspace' || e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return;
-    if (editable(e.composedPath()[0])) return;
-    e.preventDefault();
-  });
-})();`;
 
 const JPEG_QUALITY = 70;
 
@@ -83,6 +59,7 @@ export class PaneSession {
 
   private browser?: Browser;
   private context?: BrowserContext;
+  private readonly backspace: BackspaceGuard;
   private page?: Page;
   private cdp?: CDPSession;
   private running = false;
@@ -129,6 +106,7 @@ export class PaneSession {
     private readonly listener: PaneListener,
     private readonly network: NetworkOptions = {},
   ) {
+    this.backspace = new BackspaceGuard(engine);
     this.info = {
       id,
       engine,
@@ -172,14 +150,14 @@ export class PaneSession {
         const port = await freePort();
         this.browser = await chromium.launch({
           ...LEAVE_SIGNALS_TO_TRIPANE,
-          ...this.launchNetwork(),
+          ...this.launchOptions(),
           headless: true,
           channel: 'chromium',
           args: [`--remote-debugging-port=${port}`, '--remote-debugging-address=127.0.0.1'],
         });
         this.devtools = { port, targetId: '' };
       } else {
-        this.browser = await BROWSER_TYPES[this.engine].launch({ ...LEAVE_SIGNALS_TO_TRIPANE, ...this.launchNetwork(), headless: true });
+        this.browser = await BROWSER_TYPES[this.engine].launch({ ...LEAVE_SIGNALS_TO_TRIPANE, ...this.launchOptions(), headless: true });
       }
       this.info.version = this.browser.version();
       const { context, page } = await this.createPage(await stateFile?.load());
@@ -207,6 +185,13 @@ export class PaneSession {
 
     if (this.engine === 'chromium') await this.startScreencast();
     else void this.pollFrames();
+  }
+
+  /** Launch options: --proxy, and Firefox's Backspace preference (backspace.ts). */
+  private launchOptions(): Pick<LaunchOptions, 'proxy' | 'firefoxUserPrefs'> {
+    const net = this.launchNetwork();
+    if (this.engine !== 'firefox') return net;
+    return { ...net, firefoxUserPrefs: { ...FIREFOX_BACKSPACE_PREFS, ...net.firefoxUserPrefs } };
   }
 
   /** --proxy for this engine's launch. */
@@ -251,11 +236,11 @@ export class PaneSession {
     const context = storageState
       ? await this.browser!.newContext({ ...options, storageState }).catch(() => this.browser!.newContext(options))
       : await this.browser!.newContext(options);
-    await context.addInitScript({ content: NO_BACKSPACE_NAVIGATION });
     return { context, page: await context.newPage() };
   }
 
   private wirePage(context: BrowserContext, page: Page): void {
+    this.backspace.reset();
     this.attachPageEvents(page);
     context.on('page', (popup) => {
       if (!this.openingHelperPage) void this.adoptPopup(popup);
@@ -436,7 +421,11 @@ export class PaneSession {
     this.touch();
     this.queuedInputs++;
     this.inputQueue = this.inputQueue
-      .then(() => replayInput(page, ev, !!this.device?.hasTouch))
+      .then(async () => {
+        // Backspace outside a text field isn't sent where it would navigate back (backspace.ts).
+        if (ev.kind === 'key' && (await this.backspace.drop(page, ev))) return;
+        await replayInput(page, ev, !!this.device?.hasTouch);
+      })
       .catch(() => {})
       .finally(() => {
         this.queuedInputs--;
