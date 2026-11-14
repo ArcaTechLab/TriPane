@@ -33,7 +33,16 @@ beforeAll(async () => {
       }),
   });
   // Another site, whose cookie must survive clearing the first one.
-  other = Bun.serve({ hostname: 'localhost', port: 0, fetch: () => new Response('<p>other</p>', { headers: { 'content-type': 'text/html', 'set-cookie': 'keep=1; Path=/' } }) });
+  // Its port must differ from the first site's: "localhost" may bind to ::1, which can be given the
+  // same port number as 127.0.0.1, and an engine that resolves localhost to 127.0.0.1 then reaches
+  // the first site under the other's name.
+  const serveOther = () => Bun.serve({ hostname: 'localhost', port: 0, fetch: () => new Response('<p>other</p>', { headers: { 'content-type': 'text/html', 'set-cookie': 'keep=1; Path=/' } }) });
+  other = serveOther();
+  while (other.port === site.port) {
+    const taken = other;
+    other = serveOther();
+    taken.stop(true);
+  }
   tripane = await startServer({ startUrl: `http://localhost:${other.port}/`, viewport: { width: 800, height: 600 } });
   await tripane.ready;
   // Visit the other site first, then the one under test.
