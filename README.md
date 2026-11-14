@@ -207,6 +207,12 @@ Every engine reports to the same tool, Chrome DevTools (F12):
 Dock it at the left, bottom or right, or pop it out into its own window. Its tabs switch between All
 consoles, each engine, and Compare.
 
+TriPane sets two DevTools preferences for every engine:
+- Pasting into the Console and Sources works straight away, without first typing "allow pasting".
+- "Match Chrome color scheme" is off, so DevTools uses its own colors.
+
+They're set again on every start; changes made in DevTools' Settings last until TriPane quits.
+
 ## Standalone builds
 
 `bun run dist` compiles TriPane into **one executable**: server, UI and Playwright inside, no Bun,

@@ -82,10 +82,35 @@ function forwardAppShortcuts(frame: HTMLIFrameElement) {
   );
 }
 
+/**
+ * DevTools preferences TriPane sets for every engine's DevTools. The frontend is served from
+ * TriPane's origin, where it keeps its preferences in localStorage (one key per setting, values as
+ * JSON), so they're written there before a DevTools frame loads. That origin changes every start,
+ * so they're written each time.
+ *   chrome-theme-colors       "Match Chrome color scheme" off: DevTools uses its own colors, not a
+ *                             tint taken from the Chromium pane's browser.
+ *   disable-self-xss-warning  pasting works straight away in the Console and Sources, without
+ *                             typing "allow pasting" first.
+ */
+const DEVTOOLS_PREFERENCES: Record<string, unknown> = {
+  'chrome-theme-colors': false,
+  'disable-self-xss-warning': true,
+};
+
+function presetDevToolsPreferences(): void {
+  try {
+    for (const [name, value] of Object.entries(DEVTOOLS_PREFERENCES)) localStorage.setItem(name, JSON.stringify(value));
+  } catch {
+    // storage blocked: DevTools keeps its defaults
+  }
+}
+
 /** The real Chrome DevTools frontend, connected to the chosen engine's CDP endpoint. */
 export function devtoolsUrl(id: PaneId): string {
+  presetDevToolsPreferences();
   const token = new URLSearchParams(location.search).get('token') ?? '';
-  return `/devtools/devtools_app.html?ws=${location.host}/cdp/${encodeURIComponent(token)}/${id}`;
+  // disableSelfXssWarnings: the Console's own switch for the paste warning, besides the setting.
+  return `/devtools/devtools_app.html?ws=${location.host}/cdp/${encodeURIComponent(token)}/${id}&disableSelfXssWarnings=true`;
 }
 
 export function DevToolsDock(props: Props) {
