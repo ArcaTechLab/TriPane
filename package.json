@@ -1,6 +1,6 @@
 {
   "name": "tripane",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "A Polypane-style browser: one URL rendered side by side in Chromium, Firefox and WebKit via Playwright.",
   "type": "module",
