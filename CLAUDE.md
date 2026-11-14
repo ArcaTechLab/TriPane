@@ -28,7 +28,6 @@ Ask before adding a new injection.
 
 | Where | What | Why there's no alternative |
 | --- | --- | --- |
-| `server/pane.ts`: `NO_BACKSPACE_NAVIGATION` | Init script in every page: stops Backspace from navigating back (only when the key goes to a non-editable element and the page didn't handle it). | Playwright's WebKit still has Backspace = Back on Windows and macOS. With Follow links on, it sent all three panes back. No browser setting or Playwright option turns it off. |
 | `server/element-ref.ts`: `drawHighlight` | Hover and Compare outline in Firefox and WebKit: a closed-shadow-root overlay, removed when the highlight clears. | Chromium uses its native DevTools overlay (CDP `Overlay.highlightNode`); Firefox and WebKit have no overlay that Playwright exposes. |
 | `server/cdp/inspector.ts` + `server/cdp/agent.ts` | Chrome DevTools for Firefox and WebKit: an exposed binding and an init script that model the DOM for the Elements panel. Installed only once DevTools is opened on that engine. | Playwright doesn't expose Firefox's or WebKit's own inspector protocols, so the Elements panel has to be built inside the page. |
 
